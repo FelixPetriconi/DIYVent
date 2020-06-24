@@ -1,0 +1,45 @@
+*~
+*.pyc
+.sconsign.dblite
+.project
+.cproject
+.pydevproject
+.settings/
+build/
+.idea/
+.vagrant/
+*.o
+
+# Generated log files from lbuild
+project.xml.log
+
+# qt creator
+*.creator
+*.creator.user
+*.creator.shared
+*.config
+*.includes
+*.files
+build-*
+
+#Qt
+moc_*.cpp
+moc_*.h
+
+# CMake
+CMakeLists.txt
+cmake-*
+
+#Clion
+**/.idea/
+
+# repo.lb cache file
+ext/modm-devices.cache
+
+controller/modm/*
+/controller/SConstruct
+/HostApplication/ui_mainwindow.h
+/HostApplication/HostApplication
+/HostApplication/Makefile
+/modm/*
+/SConstruct

@@ -11,54 +11,119 @@
  */
 // ----------------------------------------------------------------------------
 
-#include <modm/board.hpp>
-#include <modm/platform.hpp>
-#include <modm/io/iostream.hpp>
-#include <modm/driver/display/ssd1306.hpp>
-using namespace modm::literals;
+#include "DisplayIODevice.hpp"
+#include "TestMeasurement.h"
 
+#include "common/Serialization.h"
+#include "common/SerializationHelper.h"
+#include "common/SerializerImpl.h"
+#include "common/DataTypes.h"
+
+#include <modm/board.hpp>
+#include <modm/io/iostream.hpp>
+#include <modm/platform.hpp>
+#include <modm/driver/display/ssd1306.hpp>
+#include <modm/communication/sab2.hpp>
+
+using namespace modm::literals;
 using namespace modm::platform;
 
 typedef A4 Sda;
 typedef A5 Scl;
 typedef I2cMaster MyI2cMaster;
+
+modm::Ssd1306<MyI2cMaster> *logDisplay = nullptr;
+modm::sab2::Interface<Uart0, DIYV::MaxPayloadLength> sab;
+
 modm::Ssd1306<MyI2cMaster> display;
+DIYV::DisplayIODevice<modm::Ssd1306<MyI2cMaster>> ioDevice(display);
 
+// Set all four logger streams to use the UART
+modm::log::Logger myDebug(ioDevice);
+modm::log::Logger myInfo(ioDevice);
+modm::log::Logger myWarning(ioDevice);
+modm::log::Logger myError(ioDevice);
 
-
-// using Sck = D11;
-// using Mosi = D12;
-// using Miso = D13;
-// using SpiMaster = SpiMaster2;
-
-void initialize()
+void init()
 {
+    SystemClock::enable();
+
+    // Uart0 is connected to onboard USB bridge
+    Uart0::connect<D1::Txd, D0::Rxd>();
+    Uart0::initialize<SystemClock, 38400>();
+
+    enableInterrupts();    
+
+    MyI2cMaster::connect<Scl::Scl, Sda::Sda>();
+    MyI2cMaster::initialize<Board::SystemClock, 400_kHz>();   
 }
 
 int
 main()
 {
-	Board::initialize();
+    init();
 
-	MyI2cMaster::connect<Scl::Scl, Sda::Sda>();
-	MyI2cMaster::initialize<Board::SystemClock, 400_kHz>();
+    display.initializeBlocking();
+    display.clear();
+    display.setFont(modm::font::AllCaps3x5);
+    display << "Ventilator Controller";
+    display.update();
 
-	display.initializeBlocking();
-	display.setFont(modm::font::ArcadeClassic);
-	display << "Hello World!";
-	display.update();
+    DIYV::TestMeasurement measurment;
 
-	modm::ShortPeriodicTimer timer(100);
-	uint16_t counter(0);
+    modm::ShortPeriodicTimer measurementTimer(100ms);  
+    DIYV::ControllerCommands commands;
 
-	//display.drawRectangle(0, 0, 127, 63);
-	while (true)
-	{
-		if (timer.execute())
-		{
-			display.setCursor(0,20);
-			display << counter++;
-			display.update();
-		}
-	}
+    while (true)
+    {
+        sab.update();
+        while (sab.isMessageAvailable()) 
+        {
+            if (/*(sab.getAddress() == 0x01) &*/ (sab.getCommand() == 0x02)) 
+            {
+                DIYV::SerializerSource source(sab.getPayload(), sab.getPayloadLength());
+
+                if  (commands.command == DIYV::Command::Start) 
+                {
+                    measurment.setSettings(commands);
+
+                    display.setCursor(0,20);
+                    display << "Start  ";
+                    display.setCursor(0,30);
+                    display << "p:" << static_cast<std::int32_t>(commands.settings.peep)
+                        << " mp:" << static_cast<std::int32_t>(commands.settings.maxPressure)
+                        << " ir:" << static_cast<std::int32_t>(commands.settings.irRatio)
+                        << " f:" << static_cast<std::int32_t>(commands.settings.frequency);
+
+                    display.update();
+                }
+                else if (commands.command == DIYV::Command::Stop)
+                { 
+                    display.setCursor(0,20);
+                    display << "Stop  ";
+                    display.update();
+                }
+            }
+            sab.dropMessage();
+        }
+
+        if (measurementTimer.execute())
+        {
+            measurementTimer.restart();
+            if (commands.command == DIYV::Command::Start)
+            {
+                auto m = measurment.measurement();
+                display.setCursor(0,40);
+                display << "P: " << m.pressure;
+                display.update();
+
+                DIYV::SerializerSink<128> sink;
+                sink << m;
+
+                sab.sendMessage(0x01, modm::sab::REQUEST, 0x01, sink.payload(), sink.payloadLength());
+                sab.update();
+            }
+        }
+    }
 }
+

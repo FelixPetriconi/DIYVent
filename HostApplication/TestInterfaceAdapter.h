@@ -2,11 +2,13 @@
 #define TESTCONTROLLER_H
 
 #include "Modes.h"
-#include "TransportObjects.h"
+#include "../controller/common/DataTypes.h"
 #include "PressureMeasurement.h"
 
+#include <atomic>
 #include <functional>
 #include <memory>
+#include <thread>
 
 #include <QObject>
 #include <QTimer>
@@ -21,15 +23,19 @@ class DataGenerator : public QObject
 Q_OBJECT
 public:
     DataGenerator(TestInterfaceAdapter& adapter);
-    virtual ~DataGenerator() = default;
+    virtual ~DataGenerator();
     void setOperationalMode(OperationalModes mode);
 
 private slots:
     void sendNewData();
 
 private:
+    void sender();
     TestInterfaceAdapter& _adapter;
     QTimer _testTimer;
+    std::atomic_bool _stop;
+    std::atomic_bool _run;
+    std::thread _sender;
 };
 
 
@@ -43,17 +49,14 @@ public:
     TestInterfaceAdapter(TestInterfaceAdapter&&) = default;
     TestInterfaceAdapter& operator=(TestInterfaceAdapter&&) = default;
 
-    void sendCommand(ControllerBlock data);
-    void setOperationalMode(OperationalModes mode);
-
-    void newMeasurementsArrived(const PressureMeasurements &values);
-    void setNewMeasurementArrived(std::function<void(const PressureMeasurements&)> fn);
+    void sendControllerCommand(ControllerCommands data);
+    void newMeasurementsArrived(const Measurements &values);
+    void setNewMeasurementArrived(std::function<void(MeasurementTime)> fn);
 
 private:
     void sendNewData();
-
     std::unique_ptr<DataGenerator> _dataGenerator;
-    std::function<void(const PressureMeasurements&)> _newMeasurementArrivedFn;
+    std::function<void(MeasurementTime)> _newMeasurementArrivedFn;
 };
 
 

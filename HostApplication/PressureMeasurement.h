@@ -7,18 +7,14 @@
 #ifndef PRESSUREMEASUREMENT_H
 #define PRESSUREMEASUREMENT_H
 
+#include "../controller/common/DataTypes.h"
+
 #include <chrono>
 #include <vector>
 
 namespace DIYV
 {
-struct PressureMeasurement
-{
-    std::chrono::steady_clock::time_point timePoint;
-    int value;
-};
 
-using PressureMeasurements = std::vector<PressureMeasurement>;
 
 }
 

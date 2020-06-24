@@ -2,13 +2,15 @@
   <repositories>
     <repository><path>../../modm/repo.lb</path></repository>
   </repositories>
-  <extends>modm:arduino-uno</extends>
+  <!--<extends>modm:arduino-uno</extends> -->
+  <extends>modm:nucleo-f746zg</extends>
   <options>
     <option name="modm:build:build.path">build</option>
   </options>
   <modules>
     <module>modm:io</module>
     <module>modm:platform:clock</module>
+    <module>modm:communication:sab2</module>    
     <module>modm:driver:ssd1306</module>
     <module>modm:platform:core</module>
     <module>modm:platform:gpio</module>

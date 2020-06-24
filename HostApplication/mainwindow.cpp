@@ -6,10 +6,13 @@
 
 #include "mainwindow.h"
 #include "ui_mainwindow.h"
-#include "TransportObjects.h"
+#include "../controller/common/DataTypes.h"
 
+#include <modm/debug/logger.hpp>
 #include <QMessageBox>
 #include <QTimer>
+
+void log(const char* text);
 
 namespace DIYV
 {
@@ -29,16 +32,16 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void MainWindow::setOperationalModeFn(std::function<void(OperationalModes)> fn)
+void MainWindow::setControllerCommandFn(std::function<void(ControllerCommands)> fn)
 {
-    _operationalModeFn = fn;
+    _controllerCommandsFn = fn;
 }
 
-void MainWindow::appendNewMeasurements(const PressureMeasurements &values)
+void MainWindow::appendNewMeasurements(MeasurementTime value)
 {
     if (ui->_startStop->isChecked())
     {
-        _renderer->appendNewValues(values);
+        _renderer->appendNewValue(value);
     }
 }
 
@@ -79,14 +82,21 @@ void MainWindow::showDisclaimer()
 
 void MainWindow::startStopPressed(bool value)
 {
+    MODM_LOG_DEBUG << "Start/Stop pressed" << modm::flush;
+
     ui->_startStop->setText(value? tr("Stop") : tr("Start"));
-    ControllerBlock command;
-    command.command = value? Command::Start : Command::Stop;
-    command.peep = ui->_peep->value();
-    command.peep = ui->_maxPressure->value();
-    command.irRatio = ui->_irRatio->value();
-    command.frequency = ui->_frequency->value();
-    if (_operationalModeFn) _operationalModeFn(value? OperationalModes::Start : OperationalModes::Stop);
+    ControllerCommands command{value? Command::Start : Command::Stop, {}};
+    auto& settings = command.settings;
+    settings.peep = ui->_peep->value();
+    settings.maxPressure = ui->_maxPressure->value();
+    settings.irRatio = ui->_irRatio->value();
+    settings.frequency = ui->_frequency->value();
+    if (_controllerCommandsFn) _controllerCommandsFn(command);
+
+    if (value)
+    {
+        _renderer->start();
+    }
 }
 
 void MainWindow::lockedPressed(bool locked)
@@ -98,6 +108,5 @@ void MainWindow::lockedPressed(bool locked)
     ui->_irRatio->setEnabled(!locked);
     ui->_frequency->setEnabled(!locked);
 }
-
 
 }

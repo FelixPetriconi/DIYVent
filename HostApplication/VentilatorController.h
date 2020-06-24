@@ -6,26 +6,27 @@
 
 #include <functional>
 #include <variant>
+#include <QObject>
 
 namespace DIYV
 {
 
-class VentilatorController
+class VentilatorController : public QObject
 {
+    Q_OBJECT
 public:
     VentilatorController();
 
     void setTestMode(bool mode);
 
-    void setOperationalMode(OperationalModes mode);
+    void sendControllerCommand(ControllerCommands command);
 
-    void setNewMeasurementsAvailable(std::function<void(const PressureMeasurements& values)> fn);
-
+signals:
+    void newMeasurement(MeasurementTime);
 
 private:
     std::variant<SerialInterfaceAdapter, TestInterfaceAdapter> _adapter;
-    std::function<void(const PressureMeasurements& values)> _newMeasurmentFn;
-
+    void newMeasurementArrivedFromController(MeasurementTime data);
 };
 
 }

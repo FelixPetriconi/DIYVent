@@ -6,6 +6,26 @@
 
 #include "SerialInterfaceAdapter.h"
 
+#include "../controller/common/SerializerImpl.h"
+#include "../controller/common/SerializationHelper.h"
+
+#include <modm/debug/logger.hpp>
+#include <modm/platform/uart/static_serial_interface.hpp>
+#include <modm/communication/sab.hpp>
+#include <modm/communication/sab2.hpp>
+
+#include <algorithm>
+#include <cassert>
+#include <QDebug>
+
+using StaticPort = modm::platform::StaticSerialInterface<1>;
+using SABMaster = modm::sab2::Interface<StaticPort, DIYV::MaxPayloadLength>;
+
+namespace
+{
+    modm::platform::SerialInterface port("/dev/ttyUSB1", 38400);
+    SABMaster sab;
+}
 
 namespace DIYV
 {
@@ -15,70 +35,77 @@ public:
     Interface(SerialInterfaceAdapter& adapter)
         : _adapter(adapter)
     {
+        assert(StaticPort::initialize<38400>(port));
+        _serialWorker = std::thread([this]{ this->worker(); });
     }
 
     ~Interface()
     {
         _stop = true;
         _sendConditon.notify_one();
-        _receiveConditon.notify_one();
-
-        if (_listeningThread.joinable()) _listeningThread.join();
-        if (_sendingThread.joinable()) _sendingThread.join();
+        if (_serialWorker.joinable()) _serialWorker.join();
     }
 
-    void sendCommand(ControllerBlock data)
+    void sendCommand(ControllerCommands data)
     {
-        {
-            std::unique_lock<std::mutex> block{_sendQueueMutex};
-            _sendQueue.push(data);
-        }
-        _sendConditon.notify_one();
+        std::unique_lock<std::mutex> block{_sendQueueMutex};
+        _sendQueue.push(data);
     }
 
 private:
 
-    void sender()
+    void worker()
     {
-    #if 0
         while (!_stop)
         {
-            ControllerBlock data;
+            std::optional<ControllerCommands> command;
             {
                 std::unique_lock<std::mutex> block{_sendQueueMutex};
-                while (!_stop && !_sendQueue.empty())
-                {
-                    _sendConditon.wait(block);
-                }
-                data =_sendQueue.front();
-                _sendQueue.pop();
-            }
-            // send data over the wire
-        }
-    #endif
-    }
 
-    void receiver()
-    {
-    #if 0
-        while (!_stop)
-        {
-            DataBlock data;
-            {
+                if (!_sendQueue.empty())
+                {
+                    command = _sendQueue.front();
+                    _sendQueue.pop();
+                }
             }
-            // send data over the wire
+
+            if (command)
+            {
+                SerializerSink<MaxPayloadLength> sink;
+                sink << *command;
+                {
+                    sab.sendMessage(0x01, modm::sab::REQUEST, 0x02, sink.payload(), sink.payloadLength());
+                    sab.update();
+                }
+                MODM_LOG_DEBUG << "Start/Stop send";
+            }
+
+            sab.update();
+            while (sab.isMessageAvailable())
+            {
+                MODM_LOG_DEBUG << "Messaage available";
+                if (sab.getCommand() == 0x01)
+                {
+                    MODM_LOG_DEBUG << "Measurement arrived";
+                    DIYV::SerializerSource source(sab.getPayload(), sab.getPayloadLength());
+                    MeasurementTime measurement;
+
+                    source >> measurement.measurement;
+                    measurement.timePoint = std::chrono::steady_clock::now();
+
+                    _adapter._newMeasurementArrivedFn(measurement);
+                }
+                sab.dropMessage();
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
         }
-    #endif
     }
     SerialInterfaceAdapter& _adapter;
-
     std::atomic_bool _stop{false};
-    std::queue<ControllerBlock> _sendQueue;
+    std::queue<ControllerCommands> _sendQueue;
     std::mutex _sendQueueMutex;
     std::condition_variable _sendConditon;
-    std::condition_variable _receiveConditon;
-    std::thread _sendingThread;
-    std::thread _listeningThread;
+    std::thread _serialWorker;
 };
 
 
@@ -92,17 +119,12 @@ SerialInterfaceAdapter::~SerialInterfaceAdapter()
 }
 
 
-void SerialInterfaceAdapter::sendCommand(ControllerBlock data)
+void SerialInterfaceAdapter::sendControllerCommand(ControllerCommands data)
 {
     _interface->sendCommand(data);
 }
 
-void SerialInterfaceAdapter::setOperationalMode(OperationalModes /*mode*/)
-{
-
-}
-
-void SerialInterfaceAdapter::setNewMeasurementArrived(std::function<void (const PressureMeasurements &)> fn)
+void SerialInterfaceAdapter::setNewMeasurementArrived(std::function<void(MeasurementTime)> fn)
 {
     _newMeasurementArrivedFn = fn;
 }

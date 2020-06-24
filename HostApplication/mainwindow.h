@@ -9,12 +9,14 @@
 
 #include "GraphRenderer.h"
 #include "Modes.h"
+#include "../controller/common/DataTypes.h"
 #include "PressureMeasurement.h"
 
 #include <functional>
 #include <memory>
 
 #include <QMainWindow>
+#include <QEvent>
 
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
@@ -31,8 +33,10 @@ class MainWindow : public QMainWindow
 public:
     MainWindow(QWidget *parent = nullptr);
     ~MainWindow();
-    void setOperationalModeFn(std::function<void(OperationalModes mode)> fn);
-    void appendNewMeasurements(const PressureMeasurements& values);
+    void setControllerCommandFn(std::function<void(ControllerCommands)> fn);
+
+public slots:
+    void appendNewMeasurements(MeasurementTime values);
 
 private slots:
     void showDisclaimer();
@@ -45,7 +49,7 @@ private:
     Ui::MainWindow *ui;
     std::unique_ptr<GraphRenderer> _renderer;
     QGraphicsScene* _scene;
-    std::function<void(OperationalModes mode)> _operationalModeFn;
+    std::function<void(ControllerCommands)> _controllerCommandsFn;
 };
 
 }

@@ -6,13 +6,16 @@
 
 #include "GraphRenderer.h"
 
-#include "TemplateHelpers.h"
+#include "controller/common/TemplateHelpers.h"
+#include <modm/debug/logger.hpp>
 
 #include <QGraphicsPathItem>
 #include <QFontMetrics>
 #include <algorithm>
-
+#include <modm/debug/logger.hpp>
 #include <iostream>
+
+void log(const char* text);
 
 namespace
 {
@@ -43,7 +46,6 @@ GraphRenderer::GraphRenderer(QGraphicsScene& scene)
 
 void GraphRenderer::addDescription()
 {
-
     QPainterPath description;
     {
         QPolygonF axis;
@@ -110,18 +112,16 @@ void GraphRenderer::setRecentTimeWindow(std::chrono::milliseconds recentWindow)
     _recentWindow = recentWindow;
 }
 
-void GraphRenderer::appendNewValues(const std::vector<PressureMeasurement>& values)
+void GraphRenderer::appendNewValue(MeasurementTime value)
 {
-    if (_currentStart == std::chrono::steady_clock::time_point{} && !values.empty())
-    {
-        _currentStart = values[0].timePoint;
-    }
-    _values.insert(_values.end(), values.begin(), values.end());
+    MODM_LOG_DEBUG << __FUNCTION__ << " New Value: " << value.measurement.pressure << "\n";
+
+    _values.push_back(value);
 
     update();
 }
 
-void GraphRenderer::setAllValues(PressureMeasurements values)
+void GraphRenderer::setAllValues(Measurements values)
 {
     _values = std::move(values);
 
@@ -135,6 +135,8 @@ void GraphRenderer::clear()
 
 void GraphRenderer::update()
 {
+    MODM_LOG_DEBUG << "Update\n";
+
     if (_currentStart + _recentWindow < std::chrono::steady_clock::now())
     {
         _currentStart += _recentWindow;
@@ -147,11 +149,11 @@ void GraphRenderer::update()
     QPolygonF currentPoints;
     if (itCurrentStart == _values.rend())
     {
-        convertMeasurements(_values.begin(), _values.end(), _values[0].timePoint);
+        currentPoints = convertMeasurements(_values.cbegin(), _values.cend(), _values[0].timePoint);
     }
     else
     {
-        currentPoints = convertMeasurements(make_iterator(itCurrentStart), _values.end(), _currentStart);
+        currentPoints = convertMeasurements(make_iterator(itCurrentStart), _values.cend(), _currentStart);
     }
     QPainterPath path;
     path.addPolygon(currentPoints);
@@ -161,7 +163,7 @@ void GraphRenderer::update()
 void GraphRenderer::start()
 {
     _values.clear();
-    _currentStart = std::chrono::steady_clock::time_point{};
+    _currentStart = std::chrono::steady_clock::now();
     _currentGraph->setPath(QPainterPath{});
     _previousGraph->setPath(QPainterPath{});
 }
@@ -174,7 +176,7 @@ QPolygonF GraphRenderer::convertMeasurements(Measurements::const_iterator begin,
     auto timeScale = (XAxisEnd-XAxistStart)/std::chrono::duration_cast<std::chrono::milliseconds>(_recentWindow).count();
     std::transform(begin, end, std::back_inserter(result), [offset, timeScale](const auto& item) {
         double timePoint = XAxistStart + timeScale * std::chrono::duration_cast<std::chrono::milliseconds>(item.timePoint - offset).count() ;
-        auto value = YAxisStart + item.value/mBarMax * (YAxisEnd-YAxisStart);
+        auto value = YAxisStart + item.measurement.pressure/mBarMax * (YAxisEnd-YAxisStart);
 
         return QPointF(timePoint, value );});
 

@@ -19,7 +19,7 @@ namespace DIYV
 class GraphRenderer
 {
 public:
-    using Measurements = std::vector<PressureMeasurement>;
+    using Measurements = std::vector<MeasurementTime>;
 
     GraphRenderer(QGraphicsScene& scene);
 
@@ -31,9 +31,9 @@ public:
 
     void setRecentTimeWindow(std::chrono::milliseconds recentWindow);
 
-    void appendNewValues(const Measurements& values);
+    void appendNewValue(MeasurementTime value);
 
-    void setAllValues(PressureMeasurements values);
+    void setAllValues(Measurements values);
 
     void clear();
 
@@ -52,7 +52,7 @@ private:
     double _yScale = 1.0;
     std::chrono::milliseconds _recentWindow;
     std::chrono::steady_clock::time_point _currentStart;
-    std::vector<PressureMeasurement> _values;
+    Measurements _values;
     void addDescription();
 };
 

@@ -10,6 +10,7 @@ namespace DIYV
 {
 
 VentilatorController::VentilatorController()
+    : _adapter(TestInterfaceAdapter{})
 {
 
 }
@@ -24,17 +25,17 @@ void VentilatorController::setTestMode(bool mode)
     {
         _adapter.emplace<0>();
     }
-    std::visit([&](auto& item) { item.setNewMeasurementArrived([this](const auto& data){ _newMeasurmentFn(data); }); }, _adapter);
+    std::visit([&](auto& item) { item.setNewMeasurementArrived([this](const auto& data){ this->newMeasurementArrivedFromController(data); }); }, _adapter);
 }
 
-void VentilatorController::setOperationalMode(OperationalModes mode)
+void VentilatorController::sendControllerCommand(ControllerCommands command)
 {
-    std::visit([&](auto& item) { item.setOperationalMode(mode); }, _adapter );
+    std::visit([&](auto& item) { item.sendControllerCommand(command); }, _adapter );
 }
 
-void VentilatorController::setNewMeasurementsAvailable(std::function<void (const PressureMeasurements &)> fn)
+void VentilatorController::newMeasurementArrivedFromController(MeasurementTime data)
 {
-    _newMeasurmentFn = fn;
+    emit newMeasurement(data);
 }
 
 }

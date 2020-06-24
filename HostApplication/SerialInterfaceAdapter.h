@@ -8,8 +8,7 @@
 #define SERIALINTERFACE_H
 
 #include "Modes.h"
-#include "TransportObjects.h"
-#include "PressureMeasurement.h"
+#include "../controller/common/DataTypes.h"
 
 #include <atomic>
 #include <condition_variable>
@@ -33,14 +32,13 @@ public:
     SerialInterfaceAdapter(SerialInterfaceAdapter&&) = default;
     SerialInterfaceAdapter& operator=(SerialInterfaceAdapter&&) = default;
 
-    void sendCommand(ControllerBlock data);
-    void setOperationalMode(OperationalModes mode);
-    void setNewMeasurementArrived(std::function<void(const PressureMeasurements&)> fn);
+    void sendControllerCommand(ControllerCommands data);
+    void setNewMeasurementArrived(std::function<void(MeasurementTime)> fn);
 
 
 private:
     std::unique_ptr<Interface> _interface;
-    std::function<void(const PressureMeasurements&)> _newMeasurementArrivedFn;
+    std::function<void(MeasurementTime)> _newMeasurementArrivedFn;
 };
 
 }

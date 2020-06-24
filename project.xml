@@ -8,6 +8,7 @@
     </options>
     <modules>
         <module>modm:platform:core</module>
+        <module>modm:communication:sab2</module>
         <module>modm:platform:uart</module>
         <module>modm:debug</module>
         <module>modm:build:scons</module>
