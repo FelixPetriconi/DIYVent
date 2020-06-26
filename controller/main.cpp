@@ -38,7 +38,6 @@ modm::sab2::Interface<Uart0, DIYV::MaxPayloadLength> sab;
 modm::Ssd1306<MyI2cMaster> display;
 DIYV::DisplayIODevice<modm::Ssd1306<MyI2cMaster>> ioDevice(display);
 
-// Set all four logger streams to use the UART
 modm::log::Logger myDebug(ioDevice);
 modm::log::Logger myInfo(ioDevice);
 modm::log::Logger myWarning(ioDevice);
@@ -48,7 +47,6 @@ void init()
 {
     SystemClock::enable();
 
-    // Uart0 is connected to onboard USB bridge
     Uart0::connect<D1::Txd, D0::Rxd>();
     Uart0::initialize<SystemClock, 38400>();
 
@@ -74,6 +72,8 @@ main()
     modm::ShortPeriodicTimer measurementTimer(100ms);  
     DIYV::ControllerCommands commands;
 
+    int messages{0};
+
     while (true)
     {
         sab.update();
@@ -82,6 +82,8 @@ main()
             if (/*(sab.getAddress() == 0x01) &*/ (sab.getCommand() == 0x02)) 
             {
                 DIYV::SerializerSource source(sab.getPayload(), sab.getPayloadLength());
+
+                source >> commands;
 
                 if  (commands.command == DIYV::Command::Start) 
                 {
