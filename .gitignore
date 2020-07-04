@@ -43,3 +43,5 @@ controller/modm/*
 /HostApplication/Makefile
 /modm/*
 /SConstruct
+/HostApplication/.qmake.stash
+/HostApplication/HostApplication.pro.user

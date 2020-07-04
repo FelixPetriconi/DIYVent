@@ -1,0 +1,6 @@
+[submodule "externals/BME680"]
+	path = externals/BME680
+	url = https://github.com/BoschSensortec/BME680_driver
+[submodule "externals/bldc"]
+	path = externals/bldc
+	url = https://github.com/vedderb/bldc.git

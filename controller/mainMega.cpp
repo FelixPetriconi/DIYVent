@@ -18,7 +18,7 @@
 #include "common/SerializationHelper.h"
 #include "common/SerializerImpl.h"
 #include "common/DataTypes.h"
-#include "vesc/VescUart.h"
+//#include "vesc/VescUart.h"
 
 #include <modm/board.hpp>
 #include <modm/io/iostream.hpp>
@@ -40,6 +40,7 @@ modm::sab2::Interface<Uart1, DIYV::MaxPayloadLength> sab;
 modm::Ssd1306<MyI2cMaster> display;
 DIYV::DisplayIODevice<modm::Ssd1306<MyI2cMaster>> ioDevice(display);
 
+// Set all four logger streams to use the UART
 modm::log::Logger myDebug(ioDevice);
 modm::log::Logger myInfo(ioDevice);
 modm::log::Logger myWarning(ioDevice);
@@ -48,6 +49,9 @@ modm::log::Logger myError(ioDevice);
 void init()
 {
     Board::initialize();
+
+    //MODM_LOG_DEBUG << "Start";
+
     Board::SystemClock::enable();
 
     Uart1::connect<Board::D18::Txd, Board::D19::Rxd>();
@@ -75,8 +79,6 @@ main()
     modm::ShortPeriodicTimer measurementTimer(100ms);  
     DIYV::ControllerCommands commands;
 
-    int messages{0};
-
     while (true)
     {
         sab.update();
@@ -85,8 +87,6 @@ main()
             if (/*(sab.getAddress() == 0x01) &*/ (sab.getCommand() == 0x02)) 
             {
                 DIYV::SerializerSource source(sab.getPayload(), sab.getPayloadLength());
-
-                source >> commands;
 
                 if  (commands.command == DIYV::Command::Start) 
                 {
@@ -106,6 +106,12 @@ main()
                 { 
                     display.setCursor(0,20);
                     display << "Stop  ";
+                    display.update();
+                }
+                else
+                {
+                    display.setCursor(0,40);
+                    display << "Unknown";
                     display.update();
                 }
             }

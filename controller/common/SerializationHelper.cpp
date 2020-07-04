@@ -1,5 +1,7 @@
-//
-// Created by felix on 4/18/20.
-//
+/*******************************************************************************************
+*    Copyright 2020 Felix Petriconi
+*    Distributed under the Boost Software License, Version 1.0.
+*    (See accompanying file LICENSE_1_0.txt or copy at http://www.boost.org/LICENSE_1_0.txt)
+********************************************************************************************/
 
 #include "SerializationHelper.h"
