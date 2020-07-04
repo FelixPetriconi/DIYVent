@@ -4,3 +4,6 @@
 [submodule "externals/bldc"]
 	path = externals/bldc
 	url = https://github.com/vedderb/bldc.git
+[submodule "externals/modm"]
+	path = externals/modm
+	url = https://github.com/modm-io/modm.git

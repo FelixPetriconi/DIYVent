@@ -1,0 +1,19 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2020, Felix Petriconi
+#
+# -----------------------------------------------------------------------------
+
+def init(module):
+    module.name = "BME680"
+
+def prepare(module, options):
+    return True
+
+def build(env):
+    env.outbasepath = "BME680"
+
+    env.copy("BME680/bme680.h", "bme680.h")
+    env.copy("BME680/bme680.c", "bme680.c")
+    env.copy("BME680/bme680_defs.h", "bme680_defs.h")

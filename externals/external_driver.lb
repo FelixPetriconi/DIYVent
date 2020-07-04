@@ -1,0 +1,27 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+#
+# Copyright (c) 2020, Felix Petriconi
+#
+# -----------------------------------------------------------------------------
+
+from distutils.version import StrictVersion
+
+import lbuild
+min_lbuild_version = "1.5.0"
+if StrictVersion(getattr(lbuild, "__version__", "0.1.0")) < StrictVersion(min_lbuild_version):
+    print("The DIYVent repository requires at least lbuild v{}, please upgrade!\n"
+          "    pip install -U lbuild".format(min_lbuild_version))
+    exit(1)
+
+# =============================================================================
+def init(repo):
+    repo.name = "external_driver"
+    repo.description = "External Driver"
+
+def prepare(repo, options):
+    repo.add_modules("bldc.lb")
+    repo.add_modules("BME680.lb")
+
+def build(env):
+	#env.collect(":build:path.include", "ublox/src")
